@@ -9,6 +9,7 @@ Add a setup chunk that loads the tidyverse packages.
 # add a chunk: Ctrl+Alt+I  #
 ```{r setup}
 library(tidyverse)
+theme_set(theme_bw())
 ```
 
 
@@ -22,6 +23,8 @@ mpg
 Run the code on the slide to make a graph. Pay strict attention to spelling, capitalization, and parentheses!
 
 ```{r}
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy))
 
 ```
 
@@ -30,32 +33,50 @@ Run the code on the slide to make a graph. Pay strict attention to spelling, cap
 Add `color`, `size`, `alpha`, and `shape` aesthetics to your graph. Experiment.  
 
 ```{r}
+#This graph plots the relationship between engine size and highway mileage
+#and differentiates the class of car by color of the geom point
 ggplot(data = mpg) +
   geom_point(mapping = aes(x = displ, y = hwy, color=class))
-
+#This graph plots the relationship between engine size and highway mileage
+#and differentiates the class of car by shape of the geom point
 ggplot(data = mpg) +
   geom_point(mapping = aes(x = displ, y = hwy, shape=class))
-
+#This graph plots the relationship between engine size and highway mileage
+#and differentiates the class of car by the transparency of the geom point
 ggplot(data = mpg) +
   geom_point(mapping = aes(x = displ, y = hwy, alpha=class))
-
+#This graph plots the relationship between engine size and highway mileage
+#and differentiates the class of car by the size of the geom point
 ggplot(data = mpg) +
   geom_point(mapping = aes(x = displ, y = hwy, size=class))
+
+#More practice
+ggplot(data = mpg) +
+  theme(legend.position = "none") +
+  geom_histogram(aes(x = hwy, binwidth = 1, alpha = 0.3, fill = "#E69F00"))
+
 ```
 
 ## Help Me
 
 What do `facet_grid()` and `facet_wrap()` do? 
-(run the code, interpret, convince your group)
+
+_Facets create subplots that display subsets of the data_
 
 ```{r}
 # Makes a plot that the commands below will modify
 q <- ggplot(mpg) + geom_point(aes(x = displ, y = hwy))
 
+# Plot the relationship between engine size and highway mileage by cylinder in columns
 q + facet_grid(. ~ cyl)
+# Plot the relationship between engine size and highway mileage by drive type drive type in rows
 q + facet_grid(drv ~ .)
+# Plot the relationship between engine size and highway mileage by the combinations of drive time and cylinders in a grid
 q + facet_grid(drv ~ cyl)
+#plot the relationship between engine size and highway mileage by car class type in a rectangular grid.
 q + facet_wrap(~ class)
+
+
 ```
 
 ## Your Turn 3
@@ -64,7 +85,13 @@ Add the black code to your graph. What does it do?
 
 ```{r}
 ggplot(data = mpg) +
-  geom_point(mapping = aes(displ, hwy, color = class))
+  geom_point(mapping = aes(displ, hwy, color = class)) +
+  labs(title = "Fuel Efficiency by Engine Size", 
+       subtitle = "Data facetted by class", 
+       x = "Engine Size (displacement in liters)", 
+       y = "Fuel Efficiency (MPG)", 
+       color = "Class of\nAutomobile", 
+       caption = "Data from the EPA")
 ```
 
 ## Your Turn 4
@@ -72,7 +99,14 @@ ggplot(data = mpg) +
 Replace this scatterplot with one that draws boxplots. Use the cheatsheet. Try your best guess.
 
 ```{r}
-ggplot(mpg) + geom_point(aes(class, hwy))
+ggplot(mpg, aes(x=class, y=hwy)) + 
+  geom_boxplot(mapping = aes(fill=class, notch = TRUE, outlier.colour = "#E69F00", outlier.shape = 8)) + 
+  labs(title = "Highway Mileage by Class of Vehicle", 
+       x = "Class of Vehilce", 
+       y = "Highway Mileage (MPG)")
+
+?geom_boxplot
+
 ```
 
 ## Your Turn 5
@@ -80,6 +114,11 @@ ggplot(mpg) + geom_point(aes(class, hwy))
 Make a histogram of the `hwy` variable from `mpg`. Hint: do not supply a y variable.
 
 ```{r}
+ggplot(data = mpg) + 
+  geom_histogram(mapping = aes(x=hwy), binwidth=5) + 
+  labs(title = "Frequency of Highway Mileage (MPG)", 
+       x = "Highway Mileage (MPG)", 
+       y = "NUmber of Vehicles")
 
 ```
 
@@ -88,6 +127,11 @@ Make a histogram of the `hwy` variable from `mpg`. Hint: do not supply a y varia
 Use the help page for `geom_histogram` to make the bins 2 units wide.
 
 ```{r}
+ggplot(mpg) +
+  geom_histogram(mapping = aes(x=hwy), binwidth=2) + 
+  labs(title = "Frequency of Highway Mileage (MPG)", 
+       x = "Highway Mileage (MPG)", 
+       y = "NUmber of Vehicles")
 
 ```
 
@@ -96,6 +140,13 @@ Use the help page for `geom_histogram` to make the bins 2 units wide.
 Make a bar chart `class` colored by `class`. Use the help page for `geom_bar` to choose a "color" aesthetic for class.
 
 ```{r}
+#Fill by class
+ggplot(mpg) +
+  geom_bar(mapping = aes(x= class, fill=class))
+
+#Fill by drive type
+ggplot(mpg) + 
+  geom_bar(mapping = aes(x = class, fill=drv))
 
 ```
 
@@ -105,8 +156,22 @@ What will this code do?
 
 ```{r}
 ggplot(mpg) + 
-  geom_point(aes(displ, hwy)) +
-  geom_smooth(aes(displ, hwy))
+  geom_point(aes(x = displ, y = hwy)) +
+  geom_smooth(aes(x = displ, y = hwy))
+```
+## Global Versus Local
+
+Mappings and data that appear in the `ggplot()` line will apply globally over every layer, while mappings and data what appear in each `geom_` function line will add to or override the global mappings for that layer only. 
+```{r}
+#Make the same plot as above but instead make the points filled by drive type and the line black and add labels. 
+
+ggplot(data = mpg, mapping = aes(x=displ, y=hwy)) + 
+  geom_point(mapping = aes(color=drv)) + 
+  geom_smooth(color="black") + 
+  labs(title= "Fuel Efficiency (MPG) by Engine Size (displacement in liters)", 
+       x= "Engine Size (displacement in L)", 
+       y = "Fuel Efficiency (MPG)") +
+  scale_color_discrete(name="Drive Type", labels=c("4-Wheel Drive", "Front Wheel Drive", "Rear Wheel Drive"))
 ```
 
 ## Quiz
