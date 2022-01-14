@@ -9,6 +9,10 @@ library(broom)
 
 # Import wages here
 
+library(readxl)
+wages <- read_excel("wages.xlsx", na = "NA")
+View(wages)
+
 # Fall back in case you cannot load wages
 # wages <- heights %>%
 #   filter(income > 0) %>%
@@ -27,7 +31,28 @@ library(broom)
 Fit the model on the slide and then examine the output. What does it look like?
 
 ```{r}
+wages %>% 
+  ggplot(aes(log(income))) +
+  geom_histogram(binwidth = 0.25)
 
+```
+```{r}
+mod_e <- wages %>% 
+  lm(log(income) ~ education, data = .)
+
+#model output as a data fram
+mod_e %>% 
+  tidy()
+```
+```{r}
+#common model diagnostics
+mod_e %>% 
+  glance()
+```
+```{r}
+#Model output related to original data points
+mod_e %>% 
+  augment(data = wages)
 ```
 
 ## Your Turn 3
@@ -38,15 +63,37 @@ Use a pipe to model `log(income)` against `height`. Then use broom and dplyr fun
 2. The **adj.r.squared** and **p.value** for the overall model
 
 ```{r}
-
+mod_h <- wages %>% 
+  lm(log(income) ~ height, data = .) 
+  
+mod_h %>% 
+  tidy()
+  
+mod_h %>% 
+  glance()
 ```
 
+```{r}
+mod_h %>% 
+  tidy() %>% 
+  filter(p.value <0.05)
+
+mod_e %>% 
+  tidy() %>% 
+  filter(p.value <0.05)
+```
 
 ## Your Turn 4
 
 Model `log(income)` against `education` and `height` and `sex`. Can you interpret the coefficients?
 
 ```{r}
+
+mod_ehs <- wages %>% 
+  lm(log(income) ~ education + height + sex, data = .)
+
+mod_ehs %>% 
+  tidy()
 
 ```
 
@@ -56,8 +103,13 @@ Add `+ geom_smooth(method = lm)` to the code below. What happens?
 
 ```{r}
 wages %>%
-     ggplot(aes(x = height, y = log(income))) +
-     geom_point(alpha = 0.1)
+  ggplot(aes(x = height, y = log(income))) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = lm, se = TRUE)
+
+#Fits y ~ x (like mod_h)
+#method uses R modeling function to generate the line
+# se = TRUE -- include standard error bars
 ```
 
 
@@ -68,10 +120,19 @@ Use `add_predictions` to make the plot below.
 ```{r warning = FALSE, message = FALSE}
 
 # In case you haven't made the ehs model
-mod_ehs <- wages %>% lm(log(income) ~ education + height + sex, data = .)
+# mod_ehs <- wages %>% lm(log(income) ~ education + height + sex, data = .)
 
 # Make plot here
-
+wages %>% 
+  add_predictions(mod_ehs, var = "pred") %>% 
+  add_residuals(mod_ehs, var = "resid") %>% 
+  ggplot(mapping = aes(x=height, y = pred, color = sex)) +
+    geom_line() +
+    facet_wrap(~ education) +
+  labs(title = "Predicted Income (Natural Log) Based on Height", 
+       subtitle = "Adjusted for education and sex", 
+       x = "Height",
+       y = "Predicted Income (log(income))")
 ```
 
 ***
