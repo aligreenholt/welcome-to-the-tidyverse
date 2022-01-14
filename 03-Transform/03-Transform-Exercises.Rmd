@@ -16,8 +16,8 @@ pollution <- tribble(
    "Beijing", "large",      121,
    "Beijing", "small",      56
 )
-
-# library(babynames)
+#changed general options to not use scientific notation
+options(scipen = 999)
 ```
 
 # Import Data
@@ -26,11 +26,10 @@ pollution <- tribble(
 
 Set the working directory to `03-Transform`. Then import the `babynames.csv` data set, which is in the `03-Transform` folder, as `babynames`. Then copy the import code into the code chunk below. Does it run?
 
-
-```
-
 ```{r}
-babynames
+library(readr)
+babynames <- read_csv("babynames.csv")
+View(babynames)
 ```
 
 # dplyr
@@ -40,7 +39,10 @@ babynames
 Alter the code to select just the `n` column:
 
 ```{r}
+#Before
 select(babynames, name, prop, n)
+#After
+select(babynames, n)
 ```
 
 ## Quiz
@@ -48,10 +50,10 @@ select(babynames, name, prop, n)
 Which of these is NOT a way to select the `name` and `n` columns together?
 
 ```{r}
-select(babynames, -c(year, sex, prop))
-select(babynames, name:n)
-select(babynames, starts_with("n"))
-select(babynames, ends_with("n"))
+select(babynames, -c(year, sex, prop)) #TRUE
+select(babynames, name:n) #TRUE
+select(babynames, starts_with("n")) #TRUE
+select(babynames, ends_with("n")) #FALSE
 ```
 
 ## Your Turn 3
@@ -62,6 +64,11 @@ Use `filter`, `babynames`, and the logical operators to find:
 * All of the children named "Sea"  
 
 ```{r}
+#Proportion is greater than or equal to 0.08
+filter(babynames, prop >= 0.08)
+
+#Children named "Sea"
+filter(babynames, name == "Sea")
 
 ```
 
@@ -76,12 +83,15 @@ Use Boolean operators to return only the rows that contain:
 ```{r}
 filter(babynames, sex == "M", name == "Sue")
 filter(babynames, (n %in% c(5,6)) & year == 1880)
+filter(babynames, name == "Acura" | name == "Lexus" | name == "Yugo")
 ```
 
 ## Help Me
 
 What is the smallest value of n?
+_The smallest value of n is 5._
 What is the largest?
+_The largest value of n is 99,686_
 
 ```{r}
 arrange(babynames, n, prop)
@@ -102,7 +112,7 @@ babynames %>%
   filter(sex == "F", year == 2017) %>% 
   select(name, n) %>% 
   arrange(desc(n))
-```
+``` 
 
 ## Your Turn 6 - Exam
 
@@ -111,26 +121,29 @@ babynames %>%
 3. Plot the results as a line graph with `year` on the x axis and `prop` on the y axis
 
 ```{r}
-ME <- babynames %>% 
-  filter(name == "Maggie", sex == "F") %>% 
-  select(year, prop)
-ggplot(ME) +
-  geom_line(aes(year, prop))
+babynames %>% 
+  filter(name == "Ali", sex == "F") %>% 
+  select(year, prop) %>% 
+ggplot() +
+  geom_line(mapping = aes(x = year, y = prop)) +
+labs(title = "Proportion of Females Named Ali by Year, 1960-2017", 
+     x = "Year", 
+     y = "Proportion")
 ```
 
 ## Your Turn 7
 
 Copmplete the code below to extract the rows where `name == "Khaleesi"`. Then use `summarise()` and `sum()` and `min()` to find:
 
-1. The total number of children named Khaleesi
-2. The first year Khaleesi appeared in the data
+1. The total number of children named Khaleesi: _1,964_
+2. The first year Khaleesi appeared in the data: _2011_
 
 *(Hint: Be sure to remove each `_` before running the code)*
 
 ```{r}
-babynames ___ 
-  filter(_______________________) ___
-  ___________(total = ________, first = _______)
+babynames %>% 
+  filter(name == "Khaleesi") %>% 
+  summarise(total = sum(n), first = min(year))
 ```
 
 ## Your Turn 8
@@ -141,43 +154,32 @@ Use `group_by()`, `summarise()`, and `arrange()` to display the ten most popular
 
 ```{r}
 
-summarise(babynames, total = sum(n), max = max(n))
-
-babynames %>% 
-  filter(name == "Khaleesi") %>% 
-  summarise(total = sum(n), first = min(year)) 
-
 babynames %>%
-  _______(name, sex) %>% 
-  _______(total = _____(n)) %>% 
-  _______(desc(_____))
-  
-babynames %>%
-     group_by(name, sex) %>% 
-     summarise(total = sum(n)) %>% 
-     arrange(desc(total)) %>% 
-     ungroup() %>% 
-     slice(1:10) %>% 
-     ggplot() +
-      geom_col(aes())
+  group_by(name, sex) %>% 
+  summarise(total = sum(n)) %>% 
+  arrange(desc(total)) %>% 
+  ungroup() %>% 
+  slice(1:10) %>% 
+  ggplot() +
+  geom_col(mapping = aes(x= fct_reorder(name, desc(total)), y = total, fill=sex))+
+  theme_bw() +
+  scale_fill_brewer()+
+  labs(x= "Name")
      
 ```
 
-## Your Turn 9
+
+##Your Turn 9 
 
 Use `group_by()` to calculate and then plot the total number of children born each year over time.
 
 ```{r}
-# sum of numbers
-babynames %>%
-     group_by(year) %>% 
-     summarise(total = sum(n))
-     
-# count the rows     
-babynames %>%  group_by(year) %>% 
-  tally()
-     
-     ?tally
+babynames %>% 
+  group_by(year) %>% 
+  summarise(n_children = sum(n)) %>% 
+  ggplot()+
+  geom_line(mapping = aes(x=year, y=n_children))
+
 ```
 
 ## Your Turn 10
@@ -188,10 +190,8 @@ Use `mutate()` and `min_rank()`to rank each row in babynames from _largest_ n to
 
 ```{r}
 babynames %>% 
-  mutate(rank = min_rank((prop)))
-
-babynames %>% 
-  mutate(rank = min_rank(desc(prop)))  
+  mutate(rank = min_rank(desc(prop))) %>% 
+  arrange(rank)
 
 ```
 
@@ -203,10 +203,21 @@ Group babynames by **year** and then re-rank the data. Filter the results to jus
 babynames %>% 
   group_by(year) %>% 
   mutate(rank = min_rank(desc(prop))) %>% 
-  filter(rank ==1)
+  filter(rank == 1)
+```
+How many years did each distinct name rank #1? 
+
+```{r}
+babynames %>% 
+  group_by(year) %>% 
+  mutate(rank = min_rank(desc(prop))) %>% 
+  filter(rank == 1) %>%
+  group_by(name) %>%
+  summarise(numone = sum(rank)) %>% 
+  arrange(desc(numone))
+
 ```
 
-***
 
 # Take aways
 
