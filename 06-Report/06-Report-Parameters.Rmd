@@ -1,7 +1,7 @@
 ---
 title: "`r params$name`"
 params: 
-  name: "Garrett"
+  name: "Samuel"
 ---
 
 ```{r setup, include=FALSE}
