@@ -9,8 +9,12 @@ Note: This RMarkdown script will not knit because the connection settings are fa
 
 ```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
+
 # DBI Example
 library(DBI)
+
+#Create new environ file
+usethis::edit_r_environ("project")
 
 # Load Credentials file
 readRenviron(".Renviron")
@@ -35,7 +39,7 @@ To create a environ file type `usethis::edit_r_environ("project")`.
 
 # Build SQL Query
 sql <- "SELECT *
-FROM DB.dbo.Table"
+FROM db.dbo.TABLE"
 
 # Get Query
 table <- dbGetQuery(con, sql)
@@ -49,9 +53,15 @@ dbDisconnect(con)
 
 # Oracle Connection
 
-This connection method requires rJava, follow these [instructions](9https://cimentadaj.github.io/blog/2018-05-25-installing-rjava-on-windows-10/installing-rjava-on-windows-10/)
+This connection method requires rJava, follow these [instructions](https://cimentadaj.github.io/blog/2018-05-25-installing-rjava-on-windows-10/installing-rjava-on-windows-10/)
 
 ```{r}
+
+#Check if 32 or 64 bit
+sessionInfo()
+
+#Need admin permission to install rJava
+
 library(RJDBC)
 
 # Build the driver using JDBC
