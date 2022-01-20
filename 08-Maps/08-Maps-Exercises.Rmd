@@ -1,7 +1,7 @@
 ---
 title: "Mapping Examples"
-author: "Geoffrey Arnold"
-date: "12/23/2020"
+author: "Ali Greenholt"
+date: "1/20/2022"
 output: html_document
 ---
 
@@ -22,7 +22,6 @@ require(stringr)
 
 ```{r, loading}
 cds.load <- st_read("./cb_2015_us_cd114_500k/cb_2015_us_cd114_500k.shp")
-plot(cds.load)
 
 polls <- st_read("Allegheny_County_Polling_Place_Locations_November_2016.geojson")
 ```
@@ -32,12 +31,13 @@ polls <- st_read("Allegheny_County_Polling_Place_Locations_November_2016.geojson
 plot(cds.load)
 ```
 
-
 ## Merging Table Data to your shapefile
 
 ```{r, merging}
+# Load congressional district data and make numbers consistent 4 digit strings padded by leading 0's in order to join with cds
 op_data <- read_excel("Geographies_of_Opportunity_Ranking_Well_Being_by_Congressional_District_(114th_Congress).xlsx") %>%
   mutate(Number = str_pad(Number, 4, pad = "0"))
+
 
 # Merge with Left Join
 cds <- cds.load %>%
@@ -68,7 +68,7 @@ map <- get_stamenmap(bbox_trans, maptype = "toner-lite")
 
 map %>% ggmap() + 
   coord_sf(crs = st_crs(3857)) +
-  geom_sf(data=polls, aes(color = Region), inherit.aes = FALSE) +
+  geom_sf(data=polls, aes(color = Region, alpha = 0.5), inherit.aes = FALSE) +
   theme_map()
 ```
 
@@ -84,12 +84,29 @@ leaflet() %>%
 
 ```{r}
 leaflet() %>%
-  addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE))
+  addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE), group = "World Imagery Map") %>% 
+  addProviderTiles(providers$Esri.WorldStreetMap, options = providerTileOptions(noWrap = TRUE), group = "Street Map") %>% 
+  addProviderTiles(providers$Esri.WorldTopoMap, options = providerTileOptions(noWrap = TRUE), group = "Topo Map") %>% 
+  addLayersControl(
+    baseGroups = c("World Imagery Map", "Street Map", "Topo Map"), 
+    options = layersControlOptions(collapsed = FALSE))
 ```
 
 ## Shape
 
 ```{r, polygon}
+# Set default view of map by getting bounding coordinates
+cbox <- st_bbox(cds)
+
+leaflet(data=cds) %>% 
+  addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE), group = "World Imagery Map") %>% 
+  addProviderTiles(providers$Esri.WorldStreetMap, options = providerTileOptions(noWrap = TRUE), group = "Street Map") %>% 
+  addProviderTiles(providers$Esri.WorldTopoMap, options = providerTileOptions(noWrap = TRUE), group = "Topo Map") %>% 
+  addPolygons(color = "#FF0000", group = "Congressional Districts") %>% 
+  addLayersControl(
+    baseGroups = c("World Imagery Map", "Street Map", "Topo Map"), 
+    overlayGroups = c("Congressional Districts"),
+    options = layersControlOptions(collapsed = FALSE))
 
 ```
 
@@ -98,7 +115,9 @@ leaflet() %>%
 ```{r, lines}
 rivers <- st_read("./ne_10m_rivers_lake_centerlines")
 
+#changed this to fit bounding box of polls data
 leaflet(data = rivers) %>%
+  fitBounds(-80.3, 40.2, -79.7, 40.7) %>% 
   addProviderTiles("Esri.WorldTerrain", options = providerTileOptions(noWrap = TRUE)) %>%
   addPolylines(color = "#63CBD3")
 ```
@@ -106,12 +125,32 @@ leaflet(data = rivers) %>%
 ## Line with Popups
 
 ```{r, popups}
-rivers <- st_read("./ne_10m_rivers_lake_centerlines")
 plot(rivers)
 
 leaflet(data = rivers) %>%
+  fitBounds(-80.3, 40.2, -79.7, 40.7) %>% 
   addProviderTiles("Esri.WorldTerrain", options = providerTileOptions(noWrap = TRUE)) %>%
   addPolylines(color = "#63CBD3", popup = ~name_en)
+```
+## Chloropleth Maps
+```{r, cloropleth}
+library(RColorBrewer)
+summary(op_data$`Life Expectancy at Birth (years)`)
+
+lifebins <- c(70, 75, 80, 85)
+pal <- colorBin("YlGn", domain = cds$`Life Expectancy at Birth (years)`, bins = lifebins)
+
+leaflet(data=cds) %>% 
+   addProviderTiles(providers$Esri.WorldStreetMap,group = "Street Map") %>% 
+  addProviderTiles(providers$Esri.WorldTopoMap, group = "Topo Map") %>% 
+  addPolygons(fillColor = ~pal(cds$`Life Expectancy at Birth (years)`), weight = 1, opacity = 1, color = "white", fillOpacity = 0.7, group = "Congressional Districts") %>% 
+  addLayersControl(
+    baseGroups = c("Street Map", "Topo Map"), 
+    overlayGroups = c("Congressional Districts"),
+    options = layersControlOptions(collapsed = FALSE)) %>% 
+  addLegend(pal = pal, values = lifebins, title = "Life Expectancy at Birth (years)")
+
+
 ```
 
 ## Points
@@ -124,9 +163,10 @@ potholes <- read.csv("311_potholes.csv")
 # Custom Palette
 pal311 <- colorFactor(c("#d73027", "#1a9850"), c("Closed", "Open"))
 
+#Clustering Circle Markers
 leaflet() %>%
   addProviderTiles("OpenStreetMap.HOT") %>%
-  addCircleMarkers(data = potholes, lng = ~X, lat = ~Y, radius = 1.5, color = ~pal311(STATUS)) %>%
+  addCircleMarkers(data = potholes, lng = ~X, lat = ~Y, radius = 1.5, color = ~pal311(STATUS), clusterOptions = markerClusterOptions()) %>%
   addLegend(position = "topright" , pal = pal311, values = potholes$STATUS, title = "Status")
 ```
 
@@ -135,12 +175,15 @@ leaflet() %>%
 ```{r, geojson}
 leaflet(data = polls) %>%
   addProviderTiles("OpenStreetMap.Mapnik") %>%
-  addMarkers(popup = ~paste0(LocName, ": ", NewAddress, " ", City, " PA ", Zip))
+  addMarkers(popup = ~paste0(LocName, ": ", NewAddress, " ", City, " PA ", Zip), clusterOptions = markerClusterOptions())
 ```
 
 ### Points Awesome Markers
 
 ```{r, awesome_markers}
+#Data not available
+
+
 potOver <- read.csv("potholesOvergrowth.csv")
 
 icons <- awesomeIconList(
